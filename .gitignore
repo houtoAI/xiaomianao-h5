@@ -1,0 +1,15 @@
+node_modules/
+*.log
+.DS_Store
+*.swp
+*.swo
+android-sdk/
+jdk17/
+temp-android/
+xiaomianao/
+xiaomianao-h5/
+xiaomianao-miniprogram/
+gemma-api-server/
+deploy.sh
+*.zip
+*.exe

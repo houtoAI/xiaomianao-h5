@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>小棉袄 - AI陪伴</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 导航状态栏 -->
+    <div class="nav-bar" id="navBar" style="display: none;">
+      <div class="nav-icon" id="navIcon">🚶</div>
+      <div class="nav-info">
+        <div class="nav-title" id="navTitle">导航中</div>
+        <div class="nav-direction" id="navDirection">往前直走</div>
+      </div>
+      <div class="nav-stop" id="navStop">停止</div>
+    </div>
+
+    <!-- 聊天区域 -->
+    <div class="chat-area" id="chatArea">
+      <!-- 欨迎页面 -->
+      <div class="welcome-page" id="welcomePage">
+        <img class="welcome-icon" src="images/avatar.png" alt="小棉袄">
+        <div class="welcome-subtitle">我是小棉袄</div>
+        
+        <div class="quick-actions">
+          <div class="quick-action" data-action="healthFood">
+            <div class="quick-action-icon">🥣</div>
+            <span>养生美食</span>
+          </div>
+          <div class="quick-action" data-action="reminder">
+            <div class="quick-action-icon">⏰</div>
+            <span>提醒吃药</span>
+          </div>
+          <div class="quick-action" data-action="weather">
+            <div class="quick-action-icon">☀️</div>
+            <span>问天气</span>
+          </div>
+          <div class="quick-action" data-action="toilet">
+            <div class="quick-action-icon">🚻</div>
+            <span>附近厕所</span>
+          </div>
+          <div class="quick-action" data-action="pharmacy">
+            <div class="quick-action-icon">💊</div>
+            <span>附近药店</span>
+          </div>
+          <div class="quick-action" data-action="callFamily">
+            <div class="quick-action-icon">📞</div>
+            <span>联系儿女</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 消息列表 -->
+      <div class="message-list" id="messageList"></div>
+    </div>
+
+    <!-- 底部语音区域 -->
+    <div class="voice-area">
+      <div class="recognized-text" id="recognizedText"></div>
+      
+      <div class="voice-controls">
+        <div class="side-btn" id="homeBtn">
+          <span>🏠</span>
+        </div>
+        
+        <div class="mic-btn-wrapper">
+          <button class="mic-btn" id="micBtn">
+            <div class="mic-icon">🎤</div>
+          </button>
+          <div class="pulse-ring" id="pulseRing1" style="display: none;"></div>
+          <div class="pulse-ring delay" id="pulseRing2" style="display: none;"></div>
+        </div>
+        
+        <div class="side-btn more-btn" id="moreBtn">
+          <span>⋯</span>
+        </div>
+      </div>
+      
+      <div class="voice-hint" id="voiceHint">
+        <span>点麦克风开始对话</span>
+      </div>
+      
+      <div class="end-tip" id="endTip" style="display: none;">
+        说"再见"结束对话
+      </div>
+      <div class="count-hint" id="countHint" style="font-size: 12px; text-align: center; color: #999; margin-top: 2px;"></div>
+    </div>
+
+    <!-- 更多菜单遮罩 -->
+    <div class="overlay" id="overlay" style="display: none;"></div>
+    
+    <!-- 更多菜单 -->
+    <div class="more-menu" id="moreMenu" style="display: none;">
+      <div class="menu-item" data-page="navigation">
+        <span class="menu-icon">🧭</span>
+        <span>附近导航</span>
+      </div>
+      <div class="menu-item" data-page="reminders">
+        <span class="menu-icon">⏰</span>
+        <span>定时提醒</span>
+      </div>
+      <div class="menu-item" data-page="memory">
+        <span class="menu-icon">📝</span>
+        <span>我的记忆</span>
+      </div>
+      <div class="menu-item" id="settingsMenuItem">
+        <span class="menu-icon">👤</span>
+        <span>设置</span>
+      </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div class="settings-modal" id="settingsModal" style="display: none;">
+      <div class="settings-content">
+        <div class="settings-header">
+          <span class="settings-title">设置</span>
+          <span class="settings-close" id="settingsClose">✕</span>
+        </div>
+        
+        <div class="settings-body">
+          <div class="settings-section">
+            <div class="section-title">方舟大模型</div>
+            
+            <div class="setting-item">
+              <label>API Key</label>
+              <input type="password" id="volcArkApiKey" placeholder="火山引擎方舟API Key">
+            </div>
+            
+            <div class="setting-item">
+              <label>模型名称</label>
+              <input type="text" id="volcArkModel" placeholder="doubao-1-5-lite-32k-250115">
+            </div>
+          </div>
+          
+          <div class="settings-section">
+            <div class="section-title">语音服务 (TTS + ASR)</div>
+            
+            <div class="setting-item">
+              <label>AppKey</label>
+              <input type="text" id="volcSamiAppkey" placeholder="语音服务AppKey">
+            </div>
+            
+            <div class="setting-item">
+              <label>Token</label>
+              <input type="password" id="volcSamiToken" placeholder="语音服务Token">
+            </div>
+          </div>
+          
+          <div class="settings-section">
+            <div class="section-title">获取方式</div>
+            <div class="tip-text">
+              1. 方舟API Key：火山引擎控制台 → 方舟 → API Key管理<br>
+              2. 语音服务：火山引擎控制台 → 音频技术 → 创建应用 → 获取AppKey和Token<br>
+              3. 模型名称参考：doubao-1-5-lite-32k-250115（免费额度）
+            </div>
+          </div>
+          
+          <button class="save-btn" id="saveSettingsBtn">保存设置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=20260707a"></script>
+</body>
+</html>
