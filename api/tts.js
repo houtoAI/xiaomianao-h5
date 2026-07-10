@@ -23,20 +23,27 @@ function httpsRequest(options, postData, timeoutMs) {
   });
 }
 
-async function getTtsAudio(text, speaker) {
+async function getTtsAudio(text, speaker, speed) {
   if (!SAMI_APPKEY || !SAMI_TOKEN) {
     throw new Error('未配置语音服务');
   }
 
-  const url = 'https://sami.bytedance.com/api/text_to_speech';
-  const parsedUrl = new URL(url);
+  const payload = JSON.stringify({
+    speaker: speaker || 'zh_female_qingxin',
+    text: text,
+    audio_config: {
+      format: 'mp3',
+      sample_rate: 24000,
+      speech_rate: speed !== undefined ? speed : 0
+    }
+  });
 
   const body = JSON.stringify({
-    appkey: SAMI_APPKEY,
-    token: SAMI_TOKEN,
-    text: text,
-    voice_type: speaker || 'BV700_streaming'
+    payload: payload
   });
+
+  const url = `https://sami.bytedance.com/api/v1/invoke?version=v4&token=${encodeURIComponent(SAMI_TOKEN)}&appkey=${encodeURIComponent(SAMI_APPKEY)}&namespace=TTS`;
+  const parsedUrl = new URL(url);
 
   const options = {
     hostname: parsedUrl.hostname,
@@ -50,19 +57,19 @@ async function getTtsAudio(text, speaker) {
   };
 
   const result = await httpsRequest(options, body, 15000);
-  
+
   if (result.statusCode !== 200) {
     throw new Error(`TTS API返回错误: ${result.statusCode}`);
   }
 
   try {
     const data = JSON.parse(result.body);
-    if (data.code !== 0) {
-      throw new Error(data.msg || 'TTS失败');
+    if (data.status_code !== 20000000) {
+      throw new Error(data.status_text || 'TTS失败');
     }
-    return data.data.audio;
+    return data.data;
   } catch (e) {
-    throw new Error('解析TTS响应失败: ' + e.message);
+    throw new Error('解析TTS响应失败: ' + e.message + ' | body: ' + result.body.substring(0, 300));
   }
 }
 
@@ -92,7 +99,8 @@ module.exports = async (req, res) => {
 
       const text = body.text || '';
       const speaker = body.speaker || '';
-      const audioBase64 = await getTtsAudio(text, speaker);
+      const speed = body.speed;
+      const audioBase64 = await getTtsAudio(text, speaker, speed);
       const audioBuffer = Buffer.from(audioBase64, 'base64');
 
       res.setHeader('Content-Type', 'audio/mp3');
