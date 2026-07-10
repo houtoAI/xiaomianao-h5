@@ -7,29 +7,21 @@ async function getTtsAudio(text, speaker, speed) {
   if (!SAMI_APPKEY || !SAMI_TOKEN) {
     throw new Error('未配置语音服务');
   }
-  const token = SAMI_TOKEN;
-
-  const payload = JSON.stringify({
-    speaker: speaker || 'zh_female_qingxin',
-    text: text,
-    audio_config: {
-      format: 'mp3',
-      sample_rate: 24000,
-      speech_rate: speed !== undefined ? speed : 0
-    }
-  });
 
   const body = JSON.stringify({
     appkey: SAMI_APPKEY,
-    token: token,
-    namespace: 'TTS',
-    payload: payload
+    token: SAMI_TOKEN,
+    speaker: speaker || 'zh_female_qingxin',
+    text: text,
+    format: 'mp3',
+    sample_rate: 24000,
+    speech_rate: speed !== undefined ? speed : 0
   });
 
   const options = {
     hostname: 'sami.bytedance.com',
     port: 443,
-    path: '/api/v1/invoke',
+    path: '/api/tts',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -50,12 +42,12 @@ async function getTtsAudio(text, speaker, speed) {
   });
 
   if (result.statusCode !== 200) {
-    throw new Error(`TTS API返回错误: ${result.statusCode}`);
+    throw new Error(`TTS API返回错误: ${result.statusCode} - ${result.body}`);
   }
 
   const data = JSON.parse(result.body);
-  if (data.status_code !== 20000000) {
-    throw new Error(data.status_text || 'TTS失败');
+  if (data.code !== 0) {
+    throw new Error(data.msg || 'TTS失败');
   }
 
   return data.data;
