@@ -61,7 +61,7 @@ async function getWeather(city) {
 
   const data = JSON.parse(result.body);
   if (data.status !== '1' || !data.forecasts || !data.forecasts[0]) {
-    throw new Error('天气查询失败: ' + (data.info || '未知错误'));
+    throw new Error('天气查询失败: ' + (data.info || '未知错误') + ' | raw: ' + result.body.substring(0, 300));
   }
 
   const forecast = data.forecasts[0];
@@ -72,6 +72,7 @@ async function getWeather(city) {
 
   return {
     city: forecast.city || city,
+    debug_raw_casts: JSON.stringify(casts).substring(0, 500),
     today: {
       dayWeather: parseWeatherCode(today.dayweather),
       nightWeather: parseWeatherCode(today.nightweather),
