@@ -81,11 +81,20 @@ module.exports = async (req, res) => {
   if (req.method === 'POST') {
     try {
       const body = await new Promise((resolve, reject) => {
-        let data = '';
-        req.on('data', chunk => { data += chunk; });
+        let chunks = [];
+        req.on('data', chunk => { chunks.push(chunk); });
         req.on('end', () => {
           try {
-            resolve(JSON.parse(data));
+            const buffer = Buffer.concat(chunks);
+            const contentType = req.headers['content-type'];
+            
+            if (contentType && contentType.includes('audio/wav')) {
+              const base64 = buffer.toString('base64');
+              resolve({ audio: base64 });
+            } else {
+              const jsonStr = buffer.toString('utf-8');
+              resolve(JSON.parse(jsonStr));
+            }
           } catch (e) {
             reject(e);
           }

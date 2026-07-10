@@ -23,7 +23,7 @@ function httpsRequest(options, postData, timeoutMs) {
   });
 }
 
-async function getTtsAudio(text) {
+async function getTtsAudio(text, speaker) {
   if (!SAMI_APPKEY || !SAMI_TOKEN) {
     throw new Error('未配置语音服务');
   }
@@ -35,7 +35,7 @@ async function getTtsAudio(text) {
     appkey: SAMI_APPKEY,
     token: SAMI_TOKEN,
     text: text,
-    voice_type: 'BV700_streaming'
+    voice_type: speaker || 'BV700_streaming'
   });
 
   const options = {
@@ -91,7 +91,8 @@ module.exports = async (req, res) => {
       });
 
       const text = body.text || '';
-      const audioBase64 = await getTtsAudio(text);
+      const speaker = body.speaker || '';
+      const audioBase64 = await getTtsAudio(text, speaker);
       const audioBuffer = Buffer.from(audioBase64, 'base64');
 
       res.setHeader('Content-Type', 'audio/mp3');
