@@ -709,6 +709,8 @@ async function processSpeakQueue() {
         clearTimeout(playTimeout);
         clearTimeout(canplayTimeout);
         try {
+          audio.pause();
+          audio.currentTime = 0;
           audio.onended = null;
           audio.onerror = null;
           audio.oncanplay = null;

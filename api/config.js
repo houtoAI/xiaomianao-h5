@@ -12,16 +12,13 @@ module.exports = async (req, res) => {
     const arkApiKey = process.env.VOLC_ARK_API_KEY || '';
     const arkModel = process.env.VOLC_ARK_MODEL || 'doubao-1-5-lite-32k-250115';
     const samiAppkey = process.env.VOLC_SAMI_APPKEY || '';
-    const volcAccessKey = process.env.VOLC_ACCESS_KEY || '';
-    const volcSecretKey = process.env.VOLC_SECRET_KEY || '';
+    const samiToken = process.env.VOLC_SAMI_TOKEN || '';
 
     res.status(200).json({
       arkApiKey: arkApiKey ? arkApiKey.substring(0, 8) + '...' : '',
       arkModel: arkModel,
       samiAppkey: samiAppkey ? samiAppkey.substring(0, 8) + '...' : '',
-      volcAccessKey: volcAccessKey ? volcAccessKey.substring(0, 8) + '...' : '',
-      volcSecretKey: volcSecretKey ? volcSecretKey.substring(0, 8) + '...' : '',
-      samiConfigured: !!samiAppkey && !!volcAccessKey && !!volcSecretKey
+      samiConfigured: !!samiAppkey && !!samiToken
     });
     return;
   }
