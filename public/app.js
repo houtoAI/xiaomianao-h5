@@ -5,7 +5,7 @@ const DEFAULT_CONFIG = {
   wakeWords: ['小棉袄', '小棉祆', '小绵袄'],
   endPhrases: ['再见', '拜拜', '挂了', '不聊了'],
   voiceSpeed: 1.0,
-  speaker: 'zh_male_naiqimengwa_uranus_bigtts'
+  speaker: 'zh_female_qingxin'
 };
 
 // ============ 状态 ============
@@ -617,8 +617,9 @@ async function recognizeSpeech(audioBlob) {
 // 语音播放队列：按顺序播放多条语音，不跳过
 const speakQueue = [];
 let isSpeakingNow = false;
-let speakQueueRunning = false; // 全局锁，防止processSpeakQueue重入
-let stopSpeakRequested = false; // stopSpeaking标志，processSpeakQueue检查后立即退出
+let speakQueueRunning = false;
+let stopSpeakRequested = false;
+let currentTtsController = null;
 
 async function speak(text) {
   if (!text || !text.trim()) return;
@@ -656,6 +657,7 @@ async function processSpeakQueue() {
     try {
       // TTS请求加超时（15秒），防止服务端不响应导致卡死
       const ttsController = new AbortController();
+      currentTtsController = ttsController;
       const ttsTimeout = setTimeout(() => ttsController.abort(), 15000);
       const response = await fetch('/api/tts', {
         method: 'POST',
@@ -669,6 +671,7 @@ async function processSpeakQueue() {
         signal: ttsController.signal
       });
       clearTimeout(ttsTimeout);
+      currentTtsController = null;
 
       // 检查是否已被打断
       if (stopSpeakRequested || !state.isSpeaking) {
@@ -854,7 +857,13 @@ function stopSpeaking() {
   // 清空队列
   speakQueue.length = 0;
   isSpeakingNow = false;
-  
+
+  // 中止正在进行的TTS请求
+  if (currentTtsController) {
+    try { currentTtsController.abort(); } catch(e) {}
+    currentTtsController = null;
+  }
+
   // 浏览器TTS
   if ('speechSynthesis' in window) {
     try { window.speechSynthesis.cancel(); } catch(e) {}
