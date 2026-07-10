@@ -1827,12 +1827,7 @@ async function processUserMessage(text) {
 
 // ============ 语音服务控制 ============
 async function toggleVoiceService() {
-  // 如果正在处理，不响应
-  if (state.isProcessing) {
-    return;
-  }
-  
-  // 如果正在聆听，停止录音
+  // 如果正在聆听，停止录音（允许随时停止）
   if (state.isListening) {
     stopRecording();
     return;
