@@ -1,32 +1,121 @@
 const https = require('https');
+const crypto = require('crypto');
 
+const VOLC_ACCESS_KEY = process.env.VOLC_ACCESS_KEY;
+const VOLC_SECRET_KEY = process.env.VOLC_SECRET_KEY;
 const SAMI_APPKEY = process.env.VOLC_SAMI_APPKEY;
-const SAMI_TOKEN = process.env.VOLC_SAMI_TOKEN;
 
-function httpsRequest(options, postData, timeoutMs) {
-  return new Promise((resolve, reject) => {
+let cachedToken = null;
+let tokenExpiresAt = 0;
+
+function sha256(str) {
+  return crypto.createHash('sha256').update(str, 'utf8').digest('hex');
+}
+
+function hmacSha256(key, str) {
+  return crypto.createHmac('sha256', key).update(str, 'utf8').digest();
+}
+
+async function getSamiToken() {
+  if (!VOLC_ACCESS_KEY || !VOLC_SECRET_KEY || !SAMI_APPKEY) {
+    throw new Error('未配置语音服务密钥');
+  }
+
+  const now = Date.now() / 1000;
+  if (cachedToken && tokenExpiresAt > now + 60) {
+    return cachedToken;
+  }
+
+  const host = 'open.volcengineapi.com';
+  const region = 'cn-north-1';
+  const service = 'sami';
+  const action = 'GetToken';
+  const version = '2021-07-27';
+  const algorithm = 'HMAC-SHA256';
+  const requestType = 'request';
+
+  const isoDate = new Date().toISOString().replace(/[-:]/g, '').replace('.000', 'Z');
+  const date = isoDate.substring(0, 8);
+
+  const body = JSON.stringify({
+    appkey: SAMI_APPKEY,
+    token_version: 'volc-auth-v1',
+    expiration: 3600
+  });
+
+  const bodyHash = sha256(body);
+
+  const headers = {
+    'Host': host,
+    'Content-Type': 'application/json; charset=utf-8',
+    'X-Date': isoDate,
+    'X-Content-Sha256': bodyHash
+  };
+
+  const sortedKeys = Object.keys(headers).sort();
+  const signedHeaders = sortedKeys.join(';').toLowerCase();
+  
+  let canonicalHeaders = '';
+  for (const key of sortedKeys) {
+    canonicalHeaders += key.toLowerCase() + ':' + headers[key] + '\n';
+  }
+
+  const query = `Action=${action}&Version=${version}`;
+  const canonicalRequest = `${'POST'}\n/\n${query}\n${canonicalHeaders}${signedHeaders}\n${bodyHash}`;
+  const hashedCanonicalRequest = sha256(canonicalRequest);
+
+  const credentialScope = `${date}/${region}/${service}/${requestType}`;
+  const stringToSign = `${algorithm}\n${isoDate}\n${credentialScope}\n${hashedCanonicalRequest}`;
+
+  const kDate = hmacSha256(VOLC_SECRET_KEY, date);
+  const kRegion = hmacSha256(kDate, region);
+  const kService = hmacSha256(kRegion, service);
+  const kSigning = hmacSha256(kService, requestType);
+  const signature = hmacSha256(kSigning, stringToSign).toString('hex');
+
+  const authorization = `${algorithm} Credential=${VOLC_ACCESS_KEY}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  const options = {
+    hostname: host,
+    port: 443,
+    path: `/?${query}`,
+    method: 'POST',
+    headers: {
+      'Host': host,
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-Date': isoDate,
+      'X-Content-Sha256': bodyHash,
+      'Authorization': authorization
+    }
+  };
+
+  const result = await new Promise((resolve, reject) => {
     const req = https.request(options, (res) => {
       let data = '';
       res.on('data', chunk => { data += chunk; });
-      res.on('end', () => {
-        resolve({ statusCode: res.statusCode, headers: res.headers, body: data });
-      });
+      res.on('end', () => resolve({ statusCode: res.statusCode, body: data }));
     });
     req.on('error', reject);
-    if (timeoutMs) {
-      req.setTimeout(timeoutMs, () => {
-        req.destroy(new Error('请求超时'));
-      });
-    }
-    if (postData) req.write(postData);
+    req.write(body);
     req.end();
   });
+
+  if (result.statusCode !== 200) {
+    throw new Error(`获取Token失败: ${result.statusCode} - ${result.body}`);
+  }
+
+  const data = JSON.parse(result.body);
+  if (data.status_code !== 20000000) {
+    throw new Error(data.status_text || '获取Token失败');
+  }
+
+  cachedToken = data.token;
+  tokenExpiresAt = data.expires_at;
+  return cachedToken;
 }
 
 async function getTtsAudio(text, speaker, speed) {
-  if (!SAMI_APPKEY || !SAMI_TOKEN) {
-    throw new Error('未配置语音服务');
-  }
+  const token = await getSamiToken();
 
   const payload = JSON.stringify({
     speaker: speaker || 'zh_female_qingxin',
@@ -39,16 +128,16 @@ async function getTtsAudio(text, speaker, speed) {
   });
 
   const body = JSON.stringify({
+    appkey: SAMI_APPKEY,
+    token: token,
+    namespace: 'TTS',
     payload: payload
   });
 
-  const url = `https://sami.bytedance.com/api/v1/invoke?version=v4&token=${encodeURIComponent(SAMI_TOKEN)}&appkey=${encodeURIComponent(SAMI_APPKEY)}&namespace=TTS`;
-  const parsedUrl = new URL(url);
-
   const options = {
-    hostname: parsedUrl.hostname,
+    hostname: 'sami.bytedance.com',
     port: 443,
-    path: parsedUrl.pathname + parsedUrl.search,
+    path: '/api/v1/invoke',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -56,21 +145,28 @@ async function getTtsAudio(text, speaker, speed) {
     }
   };
 
-  const result = await httpsRequest(options, body, 15000);
+  const result = await new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => resolve({ statusCode: res.statusCode, body: data }));
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => req.destroy(new Error('请求超时')));
+    req.write(body);
+    req.end();
+  });
 
   if (result.statusCode !== 200) {
     throw new Error(`TTS API返回错误: ${result.statusCode}`);
   }
 
-  try {
-    const data = JSON.parse(result.body);
-    if (data.status_code !== 20000000) {
-      throw new Error(data.status_text || 'TTS失败');
-    }
-    return data.data;
-  } catch (e) {
-    throw new Error('解析TTS响应失败: ' + e.message + ' | body: ' + result.body.substring(0, 300));
+  const data = JSON.parse(result.body);
+  if (data.status_code !== 20000000) {
+    throw new Error(data.status_text || 'TTS失败');
   }
+
+  return data.data;
 }
 
 module.exports = async (req, res) => {
