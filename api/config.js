@@ -9,24 +9,24 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'GET') {
-    // 返回环境变量配置状态（不暴露完整密钥）
     const arkApiKey = process.env.VOLC_ARK_API_KEY || '';
     const arkModel = process.env.VOLC_ARK_MODEL || 'doubao-1-5-lite-32k-250115';
     const samiAppkey = process.env.VOLC_SAMI_APPKEY || '';
-    const samiToken = process.env.VOLC_SAMI_TOKEN || '';
+    const volcAccessKey = process.env.VOLC_ACCESS_KEY || '';
+    const volcSecretKey = process.env.VOLC_SECRET_KEY || '';
 
     res.status(200).json({
       arkApiKey: arkApiKey ? arkApiKey.substring(0, 8) + '...' : '',
       arkModel: arkModel,
       samiAppkey: samiAppkey ? samiAppkey.substring(0, 8) + '...' : '',
-      samiConfigured: !!samiToken
+      volcAccessKey: volcAccessKey ? volcAccessKey.substring(0, 8) + '...' : '',
+      volcSecretKey: volcSecretKey ? volcSecretKey.substring(0, 8) + '...' : '',
+      samiConfigured: !!samiAppkey && !!volcAccessKey && !!volcSecretKey
     });
     return;
   }
 
   if (req.method === 'POST') {
-    // Vercel环境下配置通过环境变量管理，POST请求只返回成功
-    // 实际配置需要在Vercel项目设置中修改环境变量
     res.status(200).json({ success: true, message: '请通过Vercel环境变量配置' });
     return;
   }
