@@ -4,7 +4,7 @@ const crypto = require('crypto');
 
 const ARK_API_KEY = process.env.VOLC_ARK_API_KEY;
 const ARK_MODEL = process.env.VOLC_ARK_MODEL || 'doubao-1-5-lite-32k-250115';
-const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com';
+const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
 
 const DAILY_CHAT_LIMIT = 20;
 const chatUsageMap = new Map();
@@ -50,7 +50,7 @@ async function proxyArkChat(messages, model, apiKey) {
     throw new Error('未配置API Key');
   }
 
-  const url = `${ARK_BASE_URL}/v3/chat/completions`;
+  const url = `${ARK_BASE_URL}/chat/completions`;
   const parsedUrl = new URL(url);
 
   const body = JSON.stringify({
