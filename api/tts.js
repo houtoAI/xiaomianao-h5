@@ -3,6 +3,26 @@ const https = require('https');
 const SAMI_APPKEY = process.env.VOLC_SAMI_APPKEY;
 const SAMI_TOKEN = process.env.VOLC_SAMI_TOKEN;
 
+function httpsRequest(options, postData, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        resolve({ statusCode: res.statusCode, headers: res.headers, body: data });
+      });
+    });
+    req.on('error', reject);
+    if (timeoutMs) {
+      req.setTimeout(timeoutMs, () => {
+        req.destroy(new Error('请求超时'));
+      });
+    }
+    if (postData) req.write(postData);
+    req.end();
+  });
+}
+
 async function getTtsAudio(text, speaker, speed) {
   if (!SAMI_APPKEY || !SAMI_TOKEN) {
     throw new Error('未配置语音服务');
@@ -11,17 +31,15 @@ async function getTtsAudio(text, speaker, speed) {
   const body = JSON.stringify({
     appkey: SAMI_APPKEY,
     token: SAMI_TOKEN,
-    speaker: speaker || 'zh_female_qingxin',
     text: text,
-    format: 'mp3',
-    sample_rate: 24000,
-    speech_rate: speed !== undefined ? speed : 0
+    voice_type: speaker || 'BV700_streaming',
+    speed: speed !== undefined ? speed : 1.0
   });
 
   const options = {
     hostname: 'sami.bytedance.com',
     port: 443,
-    path: '/api/tts',
+    path: '/api/text_to_speech',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -29,28 +47,21 @@ async function getTtsAudio(text, speaker, speed) {
     }
   };
 
-  const result = await new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
-      res.on('end', () => resolve({ statusCode: res.statusCode, body: data }));
-    });
-    req.on('error', reject);
-    req.setTimeout(15000, () => req.destroy(new Error('请求超时')));
-    req.write(body);
-    req.end();
-  });
+  const result = await httpsRequest(options, body, 15000);
 
   if (result.statusCode !== 200) {
-    throw new Error(`TTS API返回错误: ${result.statusCode} - ${result.body}`);
+    throw new Error(`TTS API返回错误: ${result.statusCode}`);
   }
 
-  const data = JSON.parse(result.body);
-  if (data.code !== 0) {
-    throw new Error(data.msg || 'TTS失败');
+  try {
+    const data = JSON.parse(result.body);
+    if (data.code !== 0) {
+      throw new Error(data.msg || 'TTS失败');
+    }
+    return data.data.audio;
+  } catch (e) {
+    throw new Error('解析TTS响应失败: ' + e.message);
   }
-
-  return data.data;
 }
 
 module.exports = async (req, res) => {

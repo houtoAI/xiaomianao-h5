@@ -5,7 +5,7 @@ const DEFAULT_CONFIG = {
   wakeWords: ['小棉袄', '小棉祆', '小绵袄'],
   endPhrases: ['再见', '拜拜', '挂了', '不聊了'],
   voiceSpeed: 1.0,
-  speaker: 'zh_female_qingxin'
+  speaker: 'BV700_streaming'
 };
 
 // ============ 状态 ============
