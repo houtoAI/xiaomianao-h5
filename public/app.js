@@ -1938,9 +1938,11 @@ function goHome() {
 function stopVoiceService() {
   state.isVoiceServiceEnabled = false;
   state.welcomeMode = false;
+  state.isListening = false;
+  state.isSpeaking = false;
   stopRecording();
   stopSpeaking();
-  if (audioEngine.isRunning && audioEngine.mode === 'interrupt') {
+  if (audioEngine.isRunning) {
     stopAudioEngine();
   }
   updateMicButton();
