@@ -1857,18 +1857,9 @@ async function toggleVoiceService() {
     return;
   }
   
-  // 如果正在说话，停止说话并开始聆听
+  // 如果正在说话，停止说话并进入待机（用户点停止=结束对话）
   if (state.isSpeaking) {
-    stopSpeaking();
-    if (audioEngine.isRunning && audioEngine.mode === 'interrupt') {
-      stopAudioEngine();
-    }
-    // 直接开始聆听（跳过欢迎语）
-    if (!state.isVoiceServiceEnabled) {
-      await startVoiceService_noWelcome();
-    } else {
-      setTimeout(() => startRecording(), 300);
-    }
+    stopVoiceService();
     return;
   }
   
