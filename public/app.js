@@ -5,7 +5,7 @@ const DEFAULT_CONFIG = {
   wakeWords: ['小棉袄', '小棉祆', '小绵袄'],
   endPhrases: ['再见', '拜拜', '挂了', '不聊了'],
   voiceSpeed: 1.0,
-  speaker: 'zh_female_qingxin'
+  speaker: 'BV700_streaming'
 };
 
 // ============ 状态 ============
@@ -1838,9 +1838,9 @@ async function processUserMessage(text) {
 
 // ============ 语音服务控制 ============
 async function toggleVoiceService() {
-  // 如果正在聆听，停止录音（允许随时停止）
+  // 如果正在聆听，停止录音并关闭对话（用户点停止=结束对话）
   if (state.isListening) {
-    stopRecording();
+    stopVoiceService();
     return;
   }
   

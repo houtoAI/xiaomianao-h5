@@ -1,7 +1,7 @@
   const https = require('https');
 
-const SAMI_APPKEY = process.env.VOLC_SAMI_APPKEY;
-const SAMI_TOKEN = process.env.VOLC_SAMI_TOKEN;
+const TTS_APPID = process.env.VOLC_SAMI_APPKEY;
+const TTS_TOKEN = process.env.VOLC_SAMI_TOKEN;
 
 function httpsRequest(options, postData, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -23,35 +23,47 @@ function httpsRequest(options, postData, timeoutMs) {
   });
 }
 
+// 火山引擎大模型语音合成 API (openspeech)
+// 文档: https://www.volcengine.com/docs/6561/1257584
 async function getTtsAudio(text, speaker, speed) {
-  if (!SAMI_APPKEY || !SAMI_TOKEN) {
+  if (!TTS_APPID || !TTS_TOKEN) {
     throw new Error('未配置语音服务');
   }
 
-  const payload = JSON.stringify({
-    speaker: speaker || 'zh_female_qingxin',
-    text: text,
-    audio_config: {
-      format: 'mp3',
-      sample_rate: 24000,
-      speech_rate: speed !== undefined ? speed : 0
+  const voiceType = speaker || 'BV700_streaming';
+  const speedRatio = speed !== undefined ? (1 + speed * 0.1) : 1.0;
+  const reqid = Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+
+  const body = JSON.stringify({
+    app: {
+      appid: TTS_APPID,
+      token: 'access_token',
+      cluster: 'volcano_tts'
+    },
+    user: {
+      uid: 'xiaomianao_user'
+    },
+    audio: {
+      voice_type: voiceType,
+      encoding: 'mp3',
+      speed_ratio: speedRatio,
+      rate: 24000
+    },
+    request: {
+      reqid: reqid,
+      text: text,
+      operation: 'query'
     }
   });
 
-  const body = JSON.stringify({
-    appkey: SAMI_APPKEY,
-    token: SAMI_TOKEN,
-    namespace: 'TTS',
-    payload: payload
-  });
-
   const options = {
-    hostname: 'sami.bytedance.com',
+    hostname: 'openspeech.bytedance.com',
     port: 443,
-    path: '/api/v1/invoke',
+    path: '/api/v1/tts',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': 'Bearer;' + TTS_TOKEN,
       'Content-Length': Buffer.byteLength(body)
     }
   };
@@ -64,12 +76,15 @@ async function getTtsAudio(text, speaker, speed) {
 
   try {
     const data = JSON.parse(result.body);
-    if (data.status_code !== 20000000) {
-      throw new Error(data.status_text || 'TTS失败');
+    if (data.code !== 3000) {
+      throw new Error(data.message || 'TTS失败');
     }
     return data.data;
   } catch (e) {
-    throw new Error('解析TTS响应失败: ' + e.message);
+    if (e.message && e.message !== 'TTS失败' && !e.message.startsWith('TTS API')) {
+      throw new Error('解析TTS响应失败: ' + e.message);
+    }
+    throw e;
   }
 }
 
