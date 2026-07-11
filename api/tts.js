@@ -164,38 +164,22 @@ async function getTtsAudio(text, speaker) {
   const voiceType = speaker || 'zh_male_naiqimengwa_uranus_bigtts';
 
   const body = JSON.stringify({
-    app: {
-      appid: SAMI_APPKEY,
-      token: token,
-      cluster: 'volc_tts'
-    },
-    user: {
-      uid: 'xiaomianao_user'
-    },
-    audio: {
-      voice: 'other',
-      voice_type: voiceType,
-      encoding: 'mp3',
-      speed_ratio: 1.0,
-      volume_ratio: 1.0,
-      pitch_ratio: 1.0
-    },
-    request: {
-      reqid: Date.now().toString(36) + Math.random().toString(36).substring(2, 8),
-      text: text,
-      text_type: 'plain',
-      operation: 'query'
+    text: text,
+    voice_type: voiceType,
+    audio_config: {
+      format: 'mp3',
+      sample_rate: 24000,
+      speech_rate: 1.0
     }
   });
 
   const options = {
-    hostname: 'openspeech.bytedance.com',
+    hostname: 'sami.bytedance.com',
     port: 443,
-    path: '/tts_middle_layer/tts',
+    path: `/api/text_to_speech?appkey=${encodeURIComponent(SAMI_APPKEY)}&token=${encodeURIComponent(token)}`,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer;' + token,
       'Content-Length': Buffer.byteLength(body)
     }
   };
@@ -208,10 +192,10 @@ async function getTtsAudio(text, speaker) {
 
   try {
     const data = JSON.parse(result.body);
-    if (data.code !== 3000) {
-      throw new Error(`TTS失败: code=${data.code}, message=${data.message || '未知错误'}, body=${result.body}`);
+    if (data.code !== 0) {
+      throw new Error(`TTS失败: code=${data.code}, message=${data.msg || '未知错误'}, body=${result.body}`);
     }
-    return data.data;
+    return data.data.audio;
   } catch (e) {
     throw new Error('解析TTS响应失败: ' + e.message);
   }
