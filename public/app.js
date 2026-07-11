@@ -279,9 +279,12 @@ function onAudioProcess(event) {
   const vad = audioEngine.vadState;
   
   if (!vad.started) {
-    if (rms > audioEngine.silenceThreshold) {
+    // interrupt模式用更高阈值，避免TTS自身声音触发误打断
+    const threshold = audioEngine.mode === 'interrupt' ? 0.04 : audioEngine.silenceThreshold;
+    const startFrames = audioEngine.mode === 'interrupt' ? 5 : audioEngine.speechStartFrames;
+    if (rms > threshold) {
       vad.speechFrameCount++;
-      if (vad.speechFrameCount >= audioEngine.speechStartFrames) {
+      if (vad.speechFrameCount >= startFrames) {
         vad.started = true;
         vad.speechStartTime = now;
         vad.lastSpeakTime = now;
@@ -343,6 +346,10 @@ function onSpeechEnd() {
   
   if (wavBlob.size < 2000) {
     console.log('语音太短，忽略');
+    // 误触发恢复：如果不在说话、不在处理，且语音服务开启，重新开始监听
+    if (state.isVoiceServiceEnabled && !state.isSpeaking && !state.isProcessing && !state.isListening) {
+      setTimeout(() => restartListening(), 300);
+    }
     return;
   }
   
