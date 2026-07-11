@@ -820,6 +820,19 @@ async function processSpeakQueue() {
           finishTts();
         }
 
+        // 降级TTS也启动打断监听
+        if (state.isVoiceServiceEnabled) {
+          setTimeout(() => {
+            if (stopSpeakRequested || !state.isSpeaking || ttsDone) return;
+            initAudioEngine().then(ok => {
+              if (ok && state.isSpeaking && !stopSpeakRequested && !ttsDone) {
+                startAudioEngine('interrupt');
+                console.log('降级TTS打断监听已启动 (interrupt模式)');
+              }
+            });
+          }, 500);
+        }
+
         // 等待浏览器TTS播放
         while (!ttsDone && !stopSpeakRequested) {
           await new Promise(resolve => setTimeout(resolve, 100));
