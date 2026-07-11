@@ -1,7 +1,7 @@
-  const https = require('https');
+const https = require('https');
 
-const TTS_APPID = process.env.VOLC_SAMI_APPKEY;
-const TTS_TOKEN = process.env.VOLC_SAMI_TOKEN;
+const SAMI_APPKEY = process.env.VOLC_SAMI_APPKEY;
+const SAMI_TOKEN = process.env.VOLC_SAMI_TOKEN;
 
 function httpsRequest(options, postData, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -23,47 +23,28 @@ function httpsRequest(options, postData, timeoutMs) {
   });
 }
 
-// 火山引擎大模型语音合成 API (openspeech)
-// 文档: https://www.volcengine.com/docs/6561/1257584
-async function getTtsAudio(text, speaker, speed) {
-  if (!TTS_APPID || !TTS_TOKEN) {
+async function getTtsAudio(text, speaker) {
+  if (!SAMI_APPKEY || !SAMI_TOKEN) {
     throw new Error('未配置语音服务');
   }
 
-  const voiceType = speaker || 'BV700_streaming';
-  const speedRatio = speed !== undefined ? (1 + speed * 0.1) : 1.0;
-  const reqid = Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+  const url = 'https://sami.bytedance.com/api/text_to_speech';
+  const parsedUrl = new URL(url);
 
   const body = JSON.stringify({
-    app: {
-      appid: TTS_APPID,
-      token: 'access_token',
-      cluster: 'volcano_tts'
-    },
-    user: {
-      uid: 'xiaomianao_user'
-    },
-    audio: {
-      voice_type: voiceType,
-      encoding: 'mp3',
-      speed_ratio: speedRatio,
-      rate: 24000
-    },
-    request: {
-      reqid: reqid,
-      text: text,
-      operation: 'query'
-    }
+    appkey: SAMI_APPKEY,
+    token: SAMI_TOKEN,
+    text: text,
+    voice_type: speaker || 'BV700_streaming'
   });
 
   const options = {
-    hostname: 'openspeech.bytedance.com',
+    hostname: parsedUrl.hostname,
     port: 443,
-    path: '/api/v1/tts',
+    path: parsedUrl.pathname + parsedUrl.search,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer;' + TTS_TOKEN,
       'Content-Length': Buffer.byteLength(body)
     }
   };
@@ -76,15 +57,12 @@ async function getTtsAudio(text, speaker, speed) {
 
   try {
     const data = JSON.parse(result.body);
-    if (data.code !== 3000) {
-      throw new Error(data.message || 'TTS失败');
+    if (data.code !== 0) {
+      throw new Error(data.msg || 'TTS失败');
     }
-    return data.data;
+    return data.data.audio;
   } catch (e) {
-    if (e.message && e.message !== 'TTS失败' && !e.message.startsWith('TTS API')) {
-      throw new Error('解析TTS响应失败: ' + e.message);
-    }
-    throw e;
+    throw new Error('解析TTS响应失败: ' + e.message);
   }
 }
 
@@ -114,8 +92,7 @@ module.exports = async (req, res) => {
 
       const text = body.text || '';
       const speaker = body.speaker || '';
-      const speed = body.speed;
-      const audioBase64 = await getTtsAudio(text, speaker, speed);
+      const audioBase64 = await getTtsAudio(text, speaker);
       const audioBuffer = Buffer.from(audioBase64, 'base64');
 
       res.setHeader('Content-Type', 'audio/mp3');
