@@ -42,16 +42,13 @@ async function getTtsAudio(text, speaker) {
   });
 
   const body = JSON.stringify({
-    appkey: TTS_APPID,
-    token: TTS_TOKEN,
-    namespace: 'TTS',
     payload: payload
   });
 
   const options = {
     hostname: 'sami.bytedance.com',
     port: 443,
-    path: '/api/v1/invoke?version=v4',
+    path: `/api/v1/invoke?version=v4&appkey=${encodeURIComponent(TTS_APPID)}&token=${encodeURIComponent(TTS_TOKEN)}&namespace=TTS`,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
