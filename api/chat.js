@@ -1,28 +1,11 @@
 const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
+const { rateLimitMiddleware } = require('./_rateLimit.js');
 
 const ARK_API_KEY = process.env.VOLC_ARK_API_KEY;
 const ARK_MODEL = process.env.VOLC_ARK_MODEL || 'doubao-1-5-lite-32k-250115';
 const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
-
-const DAILY_CHAT_LIMIT = 20;
-const chatUsageMap = new Map();
-
-function checkChatLimit(userId) {
-  const today = new Date().toISOString().slice(0, 10);
-  const key = `${userId}_${today}`;
-  const count = chatUsageMap.get(key) || 0;
-  return { count, limit: DAILY_CHAT_LIMIT, remaining: Math.max(0, DAILY_CHAT_LIMIT - count) };
-}
-
-function incrementChatCount(userId) {
-  const today = new Date().toISOString().slice(0, 10);
-  const key = `${userId}_${today}`;
-  const count = (chatUsageMap.get(key) || 0) + 1;
-  chatUsageMap.set(key, count);
-  return count;
-}
 
 function httpsRequest(options, postData, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -97,6 +80,8 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
+    if (!rateLimitMiddleware(req, res)) return;
+
     try {
       const body = await new Promise((resolve, reject) => {
         let data = '';
@@ -111,17 +96,7 @@ module.exports = async (req, res) => {
       });
 
       const messages = body.messages || [];
-      const userId = body.userId || 'anonymous';
-
-      const usage = checkChatLimit(userId);
-      if (usage.count >= usage.limit) {
-        res.status(429).json({ error: '今日对话次数已用完', count: usage.count, limit: usage.limit });
-        return;
-      }
-
       const result = await proxyArkChat(messages, body.model);
-      incrementChatCount(userId);
-
       res.status(200).json(result);
     } catch (error) {
       console.error('代理请求失败:', error);

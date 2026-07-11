@@ -1,5 +1,6 @@
 const https = require('https');
 const crypto = require('crypto');
+const { rateLimitMiddleware } = require('./_rateLimit.js');
 
 const ACCESS_KEY = process.env.VOLC_ACCESS_KEY;
 const SECRET_KEY = process.env.VOLC_SECRET_KEY;
@@ -218,6 +219,8 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
+    if (!rateLimitMiddleware(req, res)) return;
+
     try {
       const body = await new Promise((resolve, reject) => {
         let chunks = [];

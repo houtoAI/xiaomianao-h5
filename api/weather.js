@@ -1,4 +1,5 @@
 const https = require('https');
+const { rateLimitMiddleware } = require('./_rateLimit.js');
 
 const AMAP_KEY = process.env.AMAP_KEY;
 
@@ -103,6 +104,8 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
+    if (!rateLimitMiddleware(req, res)) return;
+
     try {
       const body = await new Promise((resolve, reject) => {
         let data = '';

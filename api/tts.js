@@ -1,5 +1,6 @@
 const https = require('https');
 const crypto = require('crypto');
+const { rateLimitMiddleware } = require('./_rateLimit.js');
 
 const TTS_APP_ID = process.env.VOLC_TTS_APP_ID;
 const TTS_ACCESS_KEY = process.env.VOLC_TTS_ACCESS_KEY;
@@ -96,6 +97,8 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
+    if (!rateLimitMiddleware(req, res)) return;
+
     try {
       const body = await new Promise((resolve, reject) => {
         let data = '';
