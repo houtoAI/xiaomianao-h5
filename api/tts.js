@@ -71,13 +71,13 @@ async function getTtsAudio(text, speaker) {
   const result = await httpsRequest(options, body, 15000);
 
   if (result.statusCode !== 200) {
-    throw new Error(`TTS API返回错误: ${result.statusCode}, ${result.body}`);
+    throw new Error('TTS API返回错误: ' + result.statusCode + ', ' + result.body);
   }
 
   try {
     const data = JSON.parse(result.body);
     if (data.code !== 3000) {
-      throw new Error(`TTS失败: code=${data.code}, message=${data.message || '未知错误'}`);
+      throw new Error('TTS失败: code=' + data.code + ', message=' + (data.message || '未知错误'));
     }
     return data.data;
   } catch (e) {
