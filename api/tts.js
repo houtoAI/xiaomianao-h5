@@ -63,7 +63,7 @@ async function getTtsAudio(text, speaker) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer;' + TTS_ACCESS_KEY,
+      'X-API-KEY': TTS_ACCESS_KEY,
       'Content-Length': Buffer.byteLength(body)
     }
   };
