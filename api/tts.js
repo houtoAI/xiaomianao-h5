@@ -161,27 +161,35 @@ async function getSamiToken() {
 async function getTtsAudio(text, speaker) {
   const token = await getSamiToken();
 
-  const payload = JSON.stringify({
-    speaker: speaker || 'zh_female_qingxin',
-    text: text,
-    audio_config: {
-      format: 'mp3',
-      sample_rate: 24000,
-      speech_rate: 1.0
+  const body = JSON.stringify({
+    app: {
+      appid: SAMI_APPKEY,
+      token: token,
+      cluster: 'volcano_tts'
+    },
+    user: {
+      uid: 'xiaomianao_user'
+    },
+    audio: {
+      voice: 'other',
+      voice_type: speaker || 'zh_female_qingxin',
+      encoding: 'mp3',
+      speed_ratio: 1.0,
+      volume_ratio: 1.0,
+      pitch_ratio: 1.0
+    },
+    request: {
+      reqid: Date.now().toString(36) + Math.random().toString(36).substring(2, 8),
+      text: text,
+      text_type: 'plain',
+      operation: 'query'
     }
   });
 
-  const body = JSON.stringify({
-    appkey: SAMI_APPKEY,
-    token: token,
-    namespace: 'TTS',
-    payload: payload
-  });
-
   const options = {
-    hostname: 'sami.bytedance.com',
+    hostname: 'openspeech.bytedance.com',
     port: 443,
-    path: '/api/v1/invoke',
+    path: '/tts_middle_layer/tts',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -197,8 +205,8 @@ async function getTtsAudio(text, speaker) {
 
   try {
     const data = JSON.parse(result.body);
-    if (data.status_code !== 20000000) {
-      throw new Error(data.status_text || 'TTS失败');
+    if (data.code !== 3000) {
+      throw new Error(data.message || 'TTS失败');
     }
     return data.data;
   } catch (e) {
