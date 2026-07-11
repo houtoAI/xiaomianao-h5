@@ -162,24 +162,26 @@ async function getTtsAudio(text, speaker) {
   const token = await getSamiToken();
 
   const payload = JSON.stringify({
+    speaker: speaker || 'zh_female_qingxin',
     text: text,
-    speaker: speaker || 'BV700_streaming',
     audio_config: {
       format: 'mp3',
       sample_rate: 24000,
-      speech_rate: 1.0,
-      pitch_rate: 1.0
+      speech_rate: 1.0
     }
   });
 
   const body = JSON.stringify({
+    appkey: SAMI_APPKEY,
+    token: token,
+    namespace: 'TTS',
     payload: payload
   });
 
   const options = {
     hostname: 'sami.bytedance.com',
     port: 443,
-    path: `/api/v1/invoke?version=v4&appkey=${encodeURIComponent(SAMI_APPKEY)}&token=${encodeURIComponent(token)}&namespace=TTS`,
+    path: '/api/v1/invoke',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
