@@ -185,10 +185,10 @@ const audioEngine = {
   },
   sampleCount: 0,
   noSpeechTimeout: 5000,
-  silenceStopDuration: 500,
+  silenceStopDuration: 400,
   maxSpeechDuration: 30000,
   silenceThreshold: 0.012,
-  speechStartFrames: 3,
+  speechStartFrames: 2,
   wakeWords: DEFAULT_CONFIG.wakeWords,
 };
 
@@ -204,7 +204,7 @@ async function initAudioEngine() {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const ctx = new AudioContext({ sampleRate: 16000 });
     const source = ctx.createMediaStreamSource(mediaStream);
-    const scriptProcessor = ctx.createScriptProcessor(2048, 1, 1);
+    const scriptProcessor = ctx.createScriptProcessor(1024, 1, 1);
     const gainNode = ctx.createGain();
     gainNode.gain.value = 0;
     
@@ -231,7 +231,7 @@ function startAudioEngine(mode) {
     audioEngine.sampleCount = 0;
     return;
   }
-  
+
   audioEngine.mode = mode;
   audioEngine.pcmData = [];
   audioEngine.vadState = { started: false, speechStartTime: 0, lastSpeakTime: 0, speechFrameCount: 0 };
@@ -279,34 +279,47 @@ function onAudioProcess(event) {
   const vad = audioEngine.vadState;
   
   if (!vad.started) {
-    // interrupt模式用更高阈值，避免TTS自身声音触发误打断
-    const threshold = audioEngine.mode === 'interrupt' ? 0.04 : audioEngine.silenceThreshold;
-    const startFrames = audioEngine.mode === 'interrupt' ? 5 : audioEngine.speechStartFrames;
-    if (rms > threshold) {
-      vad.speechFrameCount++;
-      if (vad.speechFrameCount >= startFrames) {
-        vad.started = true;
-        vad.speechStartTime = now;
-        vad.lastSpeakTime = now;
+    if (audioEngine.mode === 'interrupt') {
+      if (typeof vad.noiseFloor === 'undefined') {
+        vad.noiseFloor = rms;
         vad.speechFrameCount = 0;
-        console.log('VAD: 语音开始, rms=' + rms.toFixed(4));
-        
-        if (audioEngine.mode === 'conversation') {
-          voiceHint.innerHTML = '<span>正在听您说话...</span>';
-        }
-        
-        if (audioEngine.mode === 'interrupt') {
-          console.log('TTS打断模式：检测到语音，立即停止TTS');
+      } else {
+        vad.noiseFloor = vad.noiseFloor * 0.95 + rms * 0.05;
+      }
+      const dynamicThreshold = Math.max(vad.noiseFloor * 2.5, 0.015);
+      if (rms > dynamicThreshold) {
+        vad.speechFrameCount++;
+        if (vad.speechFrameCount >= 4) {
+          vad.started = true;
+          vad.speechStartTime = now;
+          vad.lastSpeakTime = now;
+          vad.speechFrameCount = 0;
+          console.log('VAD打断: 检测到用户说话, rms=' + rms.toFixed(4) + ' baseline=' + vad.noiseFloor.toFixed(4) + ' threshold=' + dynamicThreshold.toFixed(4));
           stopSpeaking();
           audioEngine.mode = 'conversation';
           voiceHint.innerHTML = '<span>正在听您说话...</span>';
           state.isVoiceServiceEnabled = true;
+          state.isListening = true;
           endTip.style.display = 'block';
           updateMicButton();
         }
+      } else {
+        vad.speechFrameCount = Math.max(0, vad.speechFrameCount - 1);
       }
     } else {
-      vad.speechFrameCount = 0;
+      if (rms > audioEngine.silenceThreshold) {
+        vad.speechFrameCount++;
+        if (vad.speechFrameCount >= audioEngine.speechStartFrames) {
+          vad.started = true;
+          vad.speechStartTime = now;
+          vad.lastSpeakTime = now;
+          vad.speechFrameCount = 0;
+          console.log('VAD: 语音开始, rms=' + rms.toFixed(4));
+          voiceHint.innerHTML = '<span>正在听您说话...</span>';
+        }
+      } else {
+        vad.speechFrameCount = 0;
+      }
     }
     
     const noSpeechSamples = 16000 * (audioEngine.noSpeechTimeout / 1000);
@@ -1957,12 +1970,14 @@ function stopVoiceService() {
 function updateMicButton() {
   micBtn.classList.remove('active', 'listening', 'speaking');
   
-  if (state.isListening) {
-    micBtn.classList.add('listening');
+  if (state.isListening || state.isSpeaking) {
+    micBtn.classList.add(state.isListening ? 'listening' : 'speaking');
     micBtn.querySelector('.mic-icon').textContent = '⏹';
   } else {
     micBtn.querySelector('.mic-icon').textContent = '🎤';
   }
+  
+  showPulseRings(state.isListening || state.isSpeaking);
 }
 
 function showPulseRings(show) {
