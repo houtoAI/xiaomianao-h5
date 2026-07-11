@@ -1,7 +1,7 @@
 const https = require('https');
 
-const TTS_APPID = process.env.VOLC_SAMI_APPKEY;
-const TTS_TOKEN = process.env.VOLC_SAMI_TOKEN;
+const TTS_APPID = process.env.VOLC_ASR_APPID || process.env.VOLC_SAMI_APPKEY;
+const TTS_TOKEN = process.env.VOLC_ASR_TOKEN || process.env.VOLC_SAMI_TOKEN;
 
 function httpsRequest(options, postData, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -34,20 +34,23 @@ async function getTtsAudio(text, speaker) {
     app: {
       appid: TTS_APPID,
       token: 'access_token',
-      cluster: 'volcano_tts'
+      cluster: 'volc_tts'
     },
     user: {
       uid: 'xiaomianao_user'
     },
     audio: {
+      voice: 'other',
       voice_type: voiceType,
       encoding: 'mp3',
       speed_ratio: 1.0,
-      rate: 24000
+      volume_ratio: 1.0,
+      pitch_ratio: 1.0
     },
     request: {
       reqid: Date.now().toString(36) + Math.random().toString(36).substring(2, 8),
       text: text,
+      text_type: 'plain',
       operation: 'query'
     }
   });
@@ -55,7 +58,7 @@ async function getTtsAudio(text, speaker) {
   const options = {
     hostname: 'openspeech.bytedance.com',
     port: 443,
-    path: '/api/v1/tts',
+    path: '/tts_middle_layer/tts',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
