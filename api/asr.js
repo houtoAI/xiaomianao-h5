@@ -1,7 +1,7 @@
 const https = require('https');
 
-const SAMI_APPKEY = process.env.VOLC_SAMI_APPKEY;
-const SAMI_TOKEN = process.env.VOLC_SAMI_TOKEN;
+const ASR_APPID = process.env.VOLC_SAMI_APPKEY;
+const ASR_TOKEN = process.env.VOLC_SAMI_TOKEN;
 
 function httpsRequest(options, postData, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -24,43 +24,53 @@ function httpsRequest(options, postData, timeoutMs) {
 }
 
 async function recognizeSpeech(audioBase64) {
-  if (!SAMI_APPKEY || !SAMI_TOKEN) {
+  if (!ASR_APPID || !ASR_TOKEN) {
     throw new Error('未配置语音服务');
   }
 
-  const url = 'https://sami.bytedance.com/api/speech_to_text';
-  const parsedUrl = new URL(url);
-
   const body = JSON.stringify({
-    appkey: SAMI_APPKEY,
-    token: SAMI_TOKEN,
-    audio: audioBase64,
-    format: 'wav',
-    sample_rate: 16000,
-    language: 'zh'
+    app: {
+      appid: ASR_APPID,
+      token: 'access_token',
+      cluster: 'volcano_asr'
+    },
+    user: {
+      uid: 'xiaomianao_user'
+    },
+    audio: {
+      format: 'wav',
+      sample_rate: 16000,
+      language: 'zh'
+    },
+    request: {
+      reqid: Date.now().toString(36) + Math.random().toString(36).substring(2, 8),
+      audio: audioBase64,
+      operation: 'query'
+    }
   });
 
   const options = {
-    hostname: parsedUrl.hostname,
+    hostname: 'openspeech.bytedance.com',
     port: 443,
-    path: parsedUrl.pathname + parsedUrl.search,
+    path: '/api/v1/asr',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': 'Bearer;' + ASR_TOKEN,
       'Content-Length': Buffer.byteLength(body)
     }
   };
 
   const result = await httpsRequest(options, body, 15000);
-  
+
   if (result.statusCode !== 200) {
     throw new Error(`ASR API返回错误: ${result.statusCode}`);
   }
 
   try {
     const data = JSON.parse(result.body);
-    if (data.code !== 0) {
-      throw new Error(data.msg || 'ASR失败');
+    if (data.code !== 3000) {
+      throw new Error(data.message || 'ASR失败');
     }
     return data.data.result;
   } catch (e) {
