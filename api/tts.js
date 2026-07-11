@@ -1,7 +1,7 @@
 const https = require('https');
 
-const TTS_APPID = process.env.VOLC_ASR_APPID || process.env.VOLC_SAMI_APPKEY;
-const TTS_TOKEN = process.env.VOLC_ASR_TOKEN || process.env.VOLC_SAMI_TOKEN;
+const TTS_APPID = process.env.VOLC_SAMI_APPKEY;
+const TTS_TOKEN = process.env.VOLC_SAMI_TOKEN;
 
 function httpsRequest(options, postData, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -30,26 +30,31 @@ async function getTtsAudio(text, speaker) {
 
   const voiceType = speaker || 'BV700_streaming';
 
-  const body = JSON.stringify({
-    appid: TTS_APPID,
-    reqid: Date.now().toString(36) + Math.random().toString(36).substring(2, 8),
+  const payload = JSON.stringify({
     text: text,
-    voice_type: voiceType,
-    format: 'mp3',
-    sample_rate: 24000,
-    volume: 1.0,
-    speed: 1.0,
-    pitch: 1.0
+    speaker: voiceType,
+    audio_config: {
+      format: 'mp3',
+      sample_rate: 24000,
+      speech_rate: 1.0,
+      pitch_rate: 1.0
+    }
+  });
+
+  const body = JSON.stringify({
+    appkey: TTS_APPID,
+    token: TTS_TOKEN,
+    namespace: 'TTS',
+    payload: payload
   });
 
   const options = {
-    hostname: 'openspeech.bytedance.com',
+    hostname: 'sami.bytedance.com',
     port: 443,
-    path: '/api/v1/tts',
+    path: '/api/v1/invoke?version=v4',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer;' + TTS_TOKEN,
       'Content-Length': Buffer.byteLength(body)
     }
   };
@@ -62,8 +67,8 @@ async function getTtsAudio(text, speaker) {
 
   try {
     const data = JSON.parse(result.body);
-    if (data.code !== 3000) {
-      throw new Error(data.message || 'TTS失败');
+    if (data.status_code !== 20000000) {
+      throw new Error(data.status_text || 'TTS失败');
     }
     return data.data;
   } catch (e) {
