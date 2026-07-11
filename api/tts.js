@@ -31,34 +31,21 @@ async function getTtsAudio(text, speaker) {
   const voiceType = speaker || 'BV700_streaming';
 
   const body = JSON.stringify({
-    app: {
-      appid: TTS_APPID,
-      token: 'access_token',
-      cluster: 'volc_tts'
-    },
-    user: {
-      uid: 'xiaomianao_user'
-    },
-    audio: {
-      voice: 'other',
-      voice_type: voiceType,
-      encoding: 'mp3',
-      speed_ratio: 1.0,
-      volume_ratio: 1.0,
-      pitch_ratio: 1.0
-    },
-    request: {
-      reqid: Date.now().toString(36) + Math.random().toString(36).substring(2, 8),
-      text: text,
-      text_type: 'plain',
-      operation: 'query'
-    }
+    appid: TTS_APPID,
+    reqid: Date.now().toString(36) + Math.random().toString(36).substring(2, 8),
+    text: text,
+    voice_type: voiceType,
+    format: 'mp3',
+    sample_rate: 24000,
+    volume: 1.0,
+    speed: 1.0,
+    pitch: 1.0
   });
 
   const options = {
     hostname: 'openspeech.bytedance.com',
     port: 443,
-    path: '/tts_middle_layer/tts',
+    path: '/api/v1/tts',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
