@@ -190,7 +190,7 @@ async function getTtsAudio(text, speaker) {
   const result = await httpsRequest(options, body, 15000);
 
   if (result.statusCode !== 200) {
-    throw new Error(`TTS API返回错误: ${result.statusCode}`);
+    throw new Error(`TTS API返回错误: ${result.statusCode}, ${result.body}`);
   }
 
   try {
