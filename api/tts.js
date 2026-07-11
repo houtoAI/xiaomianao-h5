@@ -1,7 +1,7 @@
 const https = require('https');
 
-const TTS_APPID = process.env.VOLC_SAMI_APPKEY;
-const TTS_TOKEN = process.env.VOLC_SAMI_TOKEN;
+const TTS_APPID = process.env.VOLC_ASR_APPID || process.env.VOLC_SAMI_APPKEY;
+const TTS_TOKEN = process.env.VOLC_ASR_TOKEN || process.env.VOLC_SAMI_TOKEN;
 
 function httpsRequest(options, postData, timeoutMs) {
   return new Promise((resolve, reject) => {
@@ -30,28 +30,39 @@ async function getTtsAudio(text, speaker) {
 
   const voiceType = speaker || 'BV700_streaming';
 
-  const payload = JSON.stringify({
-    text: text,
-    speaker: voiceType,
-    audio_config: {
-      format: 'mp3',
-      sample_rate: 24000,
-      speech_rate: 1.0,
-      pitch_rate: 1.0
+  const body = JSON.stringify({
+    app: {
+      appid: TTS_APPID,
+      token: 'access_token',
+      cluster: 'volcano_tts'
+    },
+    user: {
+      uid: 'xiaomianao_user'
+    },
+    audio: {
+      voice: 'other',
+      voice_type: voiceType,
+      encoding: 'mp3',
+      speed_ratio: 1.0,
+      volume_ratio: 1.0,
+      pitch_ratio: 1.0
+    },
+    request: {
+      reqid: Date.now().toString(36) + Math.random().toString(36).substring(2, 8),
+      text: text,
+      text_type: 'plain',
+      operation: 'query'
     }
   });
 
-  const body = JSON.stringify({
-    payload: payload
-  });
-
   const options = {
-    hostname: 'sami.bytedance.com',
+    hostname: 'openspeech.bytedance.com',
     port: 443,
-    path: `/api/v1/invoke?version=v4&appkey=${encodeURIComponent(TTS_APPID)}&token=${encodeURIComponent(TTS_TOKEN)}&namespace=TTS`,
+    path: '/tts_middle_layer/tts',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': 'Bearer;' + TTS_TOKEN,
       'Content-Length': Buffer.byteLength(body)
     }
   };
@@ -64,8 +75,8 @@ async function getTtsAudio(text, speaker) {
 
   try {
     const data = JSON.parse(result.body);
-    if (data.status_code !== 20000000) {
-      throw new Error(data.status_text || 'TTS失败');
+    if (data.code !== 3000) {
+      throw new Error(data.message || 'TTS失败');
     }
     return data.data;
   } catch (e) {
