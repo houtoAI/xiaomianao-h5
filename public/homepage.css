@@ -312,6 +312,12 @@ body {
   opacity: 0.7;
 }
 
+.footer .icp {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 8px;
+}
+
 /* 响应式 - 平板 */
 @media (min-width: 768px) {
   .features-grid {
