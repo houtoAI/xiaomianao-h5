@@ -562,6 +562,14 @@ html, body {
   border-radius: 8px;
 }
 
+.footer-icp {
+  text-align: center;
+  padding: 12px;
+  font-size: 12px;
+  color: #999;
+  background: #fff;
+}
+
 /* 响应式适配 */
 @media (max-width: 480px) {
   .welcome-icon {
