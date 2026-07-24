@@ -318,6 +318,15 @@ body {
   margin-top: 8px;
 }
 
+.footer .icp a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.footer .icp a:hover {
+  text-decoration: underline;
+}
+
 /* 响应式 - 平板 */
 @media (min-width: 768px) {
   .features-grid {
